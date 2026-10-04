@@ -91,10 +91,11 @@ func (m *Manager) fetchNativeQuota(ctx context.Context, req nativeQuotaFetchRequ
 }
 
 func nativeQuotaFromUsage(usage quotaUsage) (nativeQuotaFetchResponse, error) {
+	// OpenCode Go's rolling window spans five hours.
 	windows := []struct {
 		name   string
 		window quotaWindow
-	}{{"rolling", usage.Rolling}, {"weekly", usage.Weekly}, {"monthly", usage.Monthly}}
+	}{{"5h", usage.Rolling}, {"weekly", usage.Weekly}, {"monthly", usage.Monthly}}
 	buckets := make([]nativeQuotaBucket, 0, len(windows))
 	for _, w := range windows {
 		if w.window.Status == "" && w.window.ResetsAt == "" {

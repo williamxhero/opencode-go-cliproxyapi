@@ -72,7 +72,7 @@ func TestNativeQuotaFetchUsesSelectedCredential(t *testing.T) {
 		t.Fatalf("response = %+v", got)
 	}
 	want := []nativeQuotaBucket{
-		{Window: "rolling", RemainingFraction: 1, ResetTime: "2026-10-04T15:26:49.000Z"},
+		{Window: "5h", RemainingFraction: 1, ResetTime: "2026-10-04T15:26:49.000Z"},
 		{Window: "weekly", RemainingFraction: 0.96, ResetTime: "2026-10-05T00:00:00.000Z"},
 		{Window: "monthly", RemainingFraction: 0.59, ResetTime: "2026-10-26T10:20:31.000Z"},
 	}
