@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v7/sdk/pluginabi"
 	"github.com/router-for-me/CLIProxyAPI/v7/sdk/pluginapi"
@@ -18,8 +19,9 @@ func TestNativeQuotaRegistrationKeepsLegacySchema(t *testing.T) {
 		Capabilities  map[string]any `json:"capabilities"`
 	}
 	decodeResult(t, mustHandle(t, NewManager(nil), pluginabi.MethodPluginRegister, lifecycleRequestBody(testValidYAML)), &registration)
-	if registration.SchemaVersion != pluginabi.SchemaVersion {
-		t.Fatalf("schema_version = %d, want %d", registration.SchemaVersion, pluginabi.SchemaVersion)
+	// Hosts before v7.2.159 reject plugins whose schema is newer than 3.
+	if registration.SchemaVersion != 3 {
+		t.Fatalf("schema_version = %d, want 3", registration.SchemaVersion)
 	}
 	if registration.Capabilities["quota_provider"] != true || registration.Capabilities["management_api"] != true {
 		t.Fatalf("capabilities = %+v", registration.Capabilities)
@@ -57,8 +59,15 @@ func TestNativeQuotaFetchUsesSelectedCredential(t *testing.T) {
 	}}
 	m := NewManager(NewHostBridge(f.call))
 	m.cfg = config.Config{BaseURL: "https://quota.test/v1", RequestTimeout: config.DefaultRequestTimeout, APIKeys: []config.APIKey{{Value: "config-default-key"}}}
+	raw := mustHandle(t, m, methodQuotaFetch, []byte(`{"auth_index":"1","provider":"opencode-go","attributes":{"api_key":"`+selected+`"},"host_callback_id":"cb-1"}`))
+	var wire map[string]any
+	decodeResult(t, raw, &wire)
+	bucket := wire["groups"].([]any)[0].(map[string]any)["buckets"].([]any)[1].(map[string]any)
+	if wire["subscription"].(map[string]any)["plan"] != "Go" || bucket["window"] != "weekly" || bucket["remainingFraction"] != 0.96 || bucket["resetTime"] != "2026-10-05T00:00:00.000Z" {
+		t.Fatalf("wire response = %+v", wire)
+	}
 	var got nativeQuotaFetchResponse
-	decodeResult(t, mustHandle(t, m, methodQuotaFetch, []byte(`{"auth_index":"1","provider":"opencode-go","attributes":{"api_key":"`+selected+`"}}`)), &got)
+	decodeResult(t, raw, &got)
 	if got.Subscription == nil || got.Subscription.Plan != "Go" || len(got.Groups) != 1 {
 		t.Fatalf("response = %+v", got)
 	}
@@ -107,6 +116,20 @@ func TestNativeQuotaFailuresAreRedacted(t *testing.T) {
 				t.Fatalf("response = %s", resp)
 			}
 		})
+	}
+}
+
+func TestQuotaTimeoutIsBounded(t *testing.T) {
+	for in, want := range map[time.Duration]time.Duration{
+		0:                            maxQuotaTimeout,
+		config.DefaultRequestTimeout: maxQuotaTimeout,
+		5 * time.Second:              5 * time.Second,
+		maxQuotaTimeout:              maxQuotaTimeout,
+		-time.Second:                 maxQuotaTimeout,
+	} {
+		if got := quotaTimeout(in); got != want {
+			t.Fatalf("quotaTimeout(%s) = %s, want %s", in, got, want)
+		}
 	}
 }
 
