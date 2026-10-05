@@ -127,6 +127,28 @@ plugins:
 | `max-response-bytes` | `int64` | `67108864` (64 MiB) | Maximum non-streaming response body size in bytes. |
 | `allow-http` | `bool` | `false` | When `true`, permits `http://` scheme in `base-url` / `catalog-url` for local testing. |
 
+### Keeping the model list aligned with OpenCode Go
+
+The plugin replaces its `opencode-go` catalog with the latest successful
+response from OpenCode Go. Models removed upstream therefore disappear from
+the next successful refresh. The refresh interval is configurable, with a
+minimum of one minute.
+
+For a strict mirror, use a short interval and fail closed during an outage:
+
+```yaml
+catalog:
+  refresh-interval: "1m"
+  stale-while-unavailable: false
+```
+
+`stale-while-unavailable: true` is safer during a transient outage, but it
+intentionally keeps the last successful model list until the next refresh.
+Models whose upstream protocol is not known to the plugin are retained in
+refresh diagnostics and excluded from `opencode-go` models. Add a
+`route-overrides` entry only when the upstream protocol is confirmed; the
+plugin does not guess a route for an unknown model.
+
 ## Testing
 
 ```powershell
