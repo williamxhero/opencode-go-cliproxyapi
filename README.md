@@ -31,7 +31,7 @@ This plugin exposes OpenCode Go as a single provider (`opencode-go`) backed by a
 - **Thinking & Reasoning Support**: Maps reasoning effort across supported client and upstream formats.
 - **Dynamic Catalog Discovery**: Fetches remote model catalogs with local fallback and custom route overrides.
 - **Multi-Key Auth Scheduling**: Pools multiple API keys with CLIProxyAPI's native scheduler for rotation, retries, and error cooldowns across all protocols.
-- **Native quotas**: Rolling, weekly, and monthly quotas use CLIProxyAPI’s generic quota endpoints and the selected credential. The separate plugin page is removed.
+- **Native quotas**: Rolling, weekly, and monthly quotas use CLIProxyAPI’s generic quota endpoints and the selected credential. A compatibility resource page is also exposed for older Management Center builds.
 
 ## Requirements
 
@@ -181,4 +181,4 @@ Discover support with `GET /v0/management/quota/providers`, then call
 These endpoints require the CLIProxyAPI management key. The normalized response contains
 `subscription.plan`, `groups[].buckets[].window`, `remainingFraction`, and `resetTime`.
 Missing windows are omitted. Invalid readings return an error, not an invented zero.
-Quota reset is unsupported. The old plugin quota route and resource page are removed.
+Quota reset is unsupported. For older Management Center builds, the plugin also exposes a compatibility quota resource page backed by the same native quota provider.
