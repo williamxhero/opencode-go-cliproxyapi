@@ -199,11 +199,12 @@ func TestRoutePriorityMatrix(t *testing.T) {
 func TestCompatExactIDs(t *testing.T) {
 	cases := map[string]Route{
 		// Responses.
-		"grok-4.5":                   RouteResponses,
-		"gpt-5.6-luna":               RouteResponses,
-		"muse-spark-1.2-contributor": RouteResponses,
-		"muse-spark-1.3-contributor": RouteResponses,
-		"space-bunny-free":           RouteChatCompletions,
+		"grok-4.5":                        RouteResponses,
+		"gpt-5.6-luna":                    RouteResponses,
+		"muse-spark-1.2-contributor":      RouteResponses,
+		"muse-spark-1.3-contributor":      RouteResponses,
+		"muse-spark-1.3-contributor-free": RouteResponses,
+		"space-bunny-free":                RouteChatCompletions,
 		// Chat Completions.
 		"glm-5.3":           RouteChatCompletions,
 		"glm-5.2":           RouteChatCompletions,
