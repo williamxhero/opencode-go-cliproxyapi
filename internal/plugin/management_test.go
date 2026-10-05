@@ -52,6 +52,21 @@ func TestLegacyQuotaResourceUsesNativeQuotaProvider(t *testing.T) {
 	m := NewManager(NewHostBridge(f.call))
 	m.cfg = config.Config{BaseURL: "https://quota.test/v1", RequestTimeout: config.DefaultRequestTimeout, APIKeys: []config.APIKey{{Value: key}}}
 	id, _ := quotaIdentity(key)
+	list, err := m.HandleManagement(context.Background(), pluginapi.ManagementRequest{
+		Method: http.MethodPost,
+		Path:   "/v0/management/plugins/" + pluginName + "/quota-usage",
+		Body:   []byte(`{}`),
+	})
+	if err != nil || list.StatusCode != 0 {
+		t.Fatalf("quota list response = %+v err=%v", list, err)
+	}
+	var listed legacyQuotaList
+	if err := json.Unmarshal(list.Body, &listed); err != nil {
+		t.Fatal(err)
+	}
+	if len(listed.Cards) != 1 || listed.Cards[0].KeyID != id {
+		t.Fatalf("listed cards = %+v", listed.Cards)
+	}
 	resp, err := m.HandleManagement(context.Background(), pluginapi.ManagementRequest{
 		Method: http.MethodPost,
 		Path:   "/v0/management/plugins/" + pluginName + "/quota-usage",

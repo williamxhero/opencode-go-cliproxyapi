@@ -123,7 +123,7 @@ func (m *Manager) HandleManagement(ctx context.Context, req pluginapi.Management
 			id, label := quotaIdentity(key.Value)
 			cards = append(cards, legacyQuotaCard{KeyID: id, Label: label})
 		}
-		return quotaJSON(cards)
+		return quotaJSON(legacyQuotaList{Cards: cards})
 	}
 	for _, key := range keys {
 		id, label := quotaIdentity(key.Value)
