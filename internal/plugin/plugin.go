@@ -130,6 +130,10 @@ func (m *Manager) HandleCall(method string, request []byte) (resp []byte, err er
 			return ErrEnvelope("auth_failure", err.Error()), nil
 		}
 		return okEnvelope(resp), nil
+	case pluginabi.MethodManagementRegister:
+		return m.registerManagement(request)
+	case pluginabi.MethodManagementHandle:
+		return m.handleManagement(request)
 	case pluginabi.MethodQuotaIdentifier:
 		return okEnvelope(map[string]string{"identifier": ProviderID}), nil
 	case pluginabi.MethodQuotaDescribe:
@@ -261,6 +265,7 @@ func registrationEnvelope() []byte {
 			ExecutorInputFormats:  formats,
 			ExecutorOutputFormats: formats,
 			QuotaProvider:         true,
+			ManagementAPI:         true,
 		},
 	})
 }

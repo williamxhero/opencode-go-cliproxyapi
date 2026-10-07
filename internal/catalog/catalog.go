@@ -121,6 +121,10 @@ var prefixRoutes = []struct {
 	route  Route
 }{
 	{"muse-spark", RouteResponses},
+	// OpenCode Go's Space Bunny family is served through the OpenAI
+	// Chat Completions protocol. Keep this before any broader future
+	// prefixes so variants such as space-bunny-free resolve consistently.
+	{"space-bunny", RouteChatCompletions},
 	{"deepseek", RouteChatCompletions},
 	{"minimax", RouteMessages},
 	{"longcat", RouteChatCompletions},

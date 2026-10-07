@@ -17,7 +17,7 @@ func TestQuotaRegistration(t *testing.T) {
 	m := NewManager(nil)
 	var registration registrationResult
 	decodeResult(t, registrationEnvelope(), &registration)
-	if !registration.Capabilities.QuotaProvider || registration.Capabilities.ManagementAPI {
+	if !registration.Capabilities.QuotaProvider || !registration.Capabilities.ManagementAPI {
 		t.Fatal("incorrect quota capabilities")
 	}
 	var desc pluginapi.QuotaDescribeResponse
@@ -25,7 +25,7 @@ func TestQuotaRegistration(t *testing.T) {
 	if len(desc.SupportedProviders) != 1 || desc.SupportedProviders[0] != ProviderID || desc.SupportsReset {
 		t.Fatal("incorrect description")
 	}
-	for _, method := range []string{pluginabi.MethodManagementRegister, pluginabi.MethodManagementHandle, pluginabi.MethodQuotaReset} {
+	for _, method := range []string{pluginabi.MethodQuotaReset} {
 		var env pluginabi.Envelope
 		json.Unmarshal(mustHandle(t, m, method, []byte(`{}`)), &env)
 		if env.OK {
