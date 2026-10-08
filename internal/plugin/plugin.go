@@ -353,23 +353,26 @@ func (m *Manager) materializeAuthRecords(ctx context.Context, cfg config.Config)
 		// Recover identity from those host-reported paths to avoid duplicates
 		// when a credential has a readable filename.
 		if entry.Provider == ProviderID || entry.Type == ProviderID {
-			if !filepath.IsAbs(entry.Path) {
-				return fmt.Errorf("existing auth record has no absolute path")
+			// The host can report plugin-managed records with a path relative to its own
+			// working directory. Resolve it, and never let one unreadable record abort
+			// registration: identity is still recoverable from the reported name.
+			path := strings.TrimSpace(entry.Path)
+			if path != "" && !filepath.IsAbs(path) {
+				if abs, err := filepath.Abs(path); err == nil {
+					path = abs
+				}
 			}
-			raw, err := os.ReadFile(entry.Path)
-			if err != nil {
-				return fmt.Errorf("cannot read existing plugin auth record")
-			}
-			var record struct {
-				APIKey  string `json:"api_key"`
-				BaseURL string `json:"base_url"`
-			}
-			if json.Unmarshal(raw, &record) != nil || record.APIKey == "" {
-				return fmt.Errorf("existing plugin auth record is invalid")
-			}
-			if record.BaseURL == "" || strings.TrimRight(record.BaseURL, "/") == strings.TrimRight(cfg.BaseURL, "/") {
-				digest := sha256.Sum256([]byte(record.APIKey))
-				existing["opencode-go-key-"+hex.EncodeToString(digest[:])] = struct{}{}
+			if raw, err := os.ReadFile(path); err == nil {
+				var record struct {
+					APIKey  string `json:"api_key"`
+					BaseURL string `json:"base_url"`
+				}
+				if json.Unmarshal(raw, &record) == nil && record.APIKey != "" {
+					if record.BaseURL == "" || strings.TrimRight(record.BaseURL, "/") == strings.TrimRight(cfg.BaseURL, "/") {
+						digest := sha256.Sum256([]byte(record.APIKey))
+						existing["opencode-go-key-"+hex.EncodeToString(digest[:])] = struct{}{}
+					}
+				}
 			}
 		}
 		if name := strings.TrimSpace(entry.Name); name != "" {

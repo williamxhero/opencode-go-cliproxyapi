@@ -14,6 +14,57 @@ import (
 	"opencode-go-cliproxyapi/internal/config"
 )
 
+// The live host reports plugin-managed records with a path relative to its own working
+// directory, and can report records that no longer exist. Neither may abort
+// registration or re-create a credential that is already there.
+func TestRelativeHostAuthPathNeverBreaksRegistration(t *testing.T) {
+	// Use a directory on the same volume as the working directory so a genuinely
+	// relative path can be built.
+	dir, err := os.MkdirTemp(".", "relpath-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	key := "sk-oc-relative-dummy"
+	id, _ := quotaIdentity(key)
+	record := mustJSON(map[string]string{"type": ProviderID, "id": id, "api_key": key, "label": "Imported"})
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	abs := filepath.Join(absDir, "OpenCode-Go.json")
+	if err := os.WriteFile(abs, record, 0600); err != nil {
+		t.Fatal(err)
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	rel, err := filepath.Rel(cwd, abs)
+	if err != nil {
+		t.Skipf("cannot build a relative path on this volume: %v", err)
+	}
+
+	f := &fakeCaller{responder: func(method string, _ []byte) ([]byte, error) {
+		if method == pluginabi.MethodHostAuthList {
+			return hostOK(hostAuthListResponse{Files: []pluginapi.HostAuthFileEntry{
+				{Provider: ProviderID, ID: id, Name: "OpenCode-Go.json", Path: rel},
+				{Provider: ProviderID, Name: "gone.json", Path: filepath.Join("does", "not", "exist.json")},
+			}}), nil
+		}
+		return hostOK(nil), nil
+	}}
+	m := NewManager(NewHostBridge(f.call))
+	cfg := config.Config{BaseURL: config.DefaultBaseURL, APIKeys: []config.APIKey{{Value: key}}}
+
+	if err := m.materializeAuthRecords(context.Background(), cfg); err != nil {
+		t.Fatalf("a relative or unreadable host path must not abort registration: %v", err)
+	}
+	if calls := f.callsOf(pluginabi.MethodHostAuthSave); len(calls) != 0 {
+		t.Fatalf("existing credential re-created: %d saves", len(calls))
+	}
+}
+
 func TestCredentialSecretLabelAndSaveRejection(t *testing.T) {
 	bridge, f := credentialTestHost(t)
 	m := NewManager(bridge)
