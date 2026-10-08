@@ -162,6 +162,37 @@ go test ./... -cover
 go vet ./...
 ```
 
+## Adding credentials from a management form
+
+With the plugin enabled, submit a management-authenticated request to
+`POST /v0/management/plugins/opencode-go-cliproxyapi/credentials`:
+
+```json
+{"base_url":"https://opencode.ai/zen/go/v1","api_key":"oc_sk_dummy_example","name":"Personal"}
+```
+
+The response is `{"ok":true,"id":"opencode-go-key-<hash>","label":"Personal"}`.
+`base_url` and a non-empty `api_key` are required; `name` defaults to **OpenCode Go**.
+Unknown fields are ignored. URLs must use HTTPS (HTTP requires `allow-http: true`)
+and contain a host, with no userinfo, query, or fragment. The key is never returned.
+A duplicate key plus normalized base URL returns HTTP 409. Invalid input returns
+400; unavailable host credential support returns 503; host inspection/save errors
+return 502 with redacted reasons.
+
+Credentials are persisted through the host auth API as provider `opencode-go`,
+with the supplied label and their own `base_url`. Execution prefers selected auth
+attributes, then stored credential JSON, then the configured `base-url`; quota
+fetches also use the credential URL. Legacy configured quota `key_id` values are
+unchanged, and form credentials are included in the compatibility quota list.
+Form credential filenames use the returned hash ID plus `.json`.
+
+At least one configured `api-keys` entry is still required for plugin startup and
+catalog discovery; form credentials do not change the global model catalog.
+The host's current save callback is not transactional and exposes no rollback
+API: host-side disk/upsert failures may leave a partial file. The plugin publishes
+no local credential state on failure and waits for the save result rather than
+returning a timeout while a mutating callback continues.
+
 ## Account names and quotas
 
 Set an optional `name` on each `api-keys` entry, alongside `value`.
@@ -170,7 +201,7 @@ uses **OpenCode Go**; multiple keys use **OpenCode Go 1**, **OpenCode Go 2**, an
 Default numbers follow configuration order. Explicit names remain stable when keys are reordered.
 The usage response contains no email or account identity. The plugin does not infer an email from a key.
 
-New credential files have readable names. Existing auth IDs remain unchanged, and
+Configured credential files have readable names. Existing auth IDs remain unchanged, and
 legacy generated labels are replaced when parsed. Existing custom labels are preserved
 unless configuration specifies a name. Existing filenames are retained automatically;
 stop CLIProxyAPI before renaming an old file to a readable `.json` filename, and keep

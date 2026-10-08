@@ -352,7 +352,7 @@ func (m *Manager) materializeAuthRecords(ctx context.Context, cfg config.Config)
 		// Before the auth manager is ready, v8 lists disk files without IDs.
 		// Recover identity from those host-reported paths to avoid duplicates
 		// when a credential has a readable filename.
-		if (entry.Provider == ProviderID || entry.Type == ProviderID) && !strings.HasPrefix(entry.ID, "opencode-go-key-") {
+		if entry.Provider == ProviderID || entry.Type == ProviderID {
 			if !filepath.IsAbs(entry.Path) {
 				return fmt.Errorf("existing auth record has no absolute path")
 			}
@@ -361,13 +361,16 @@ func (m *Manager) materializeAuthRecords(ctx context.Context, cfg config.Config)
 				return fmt.Errorf("cannot read existing plugin auth record")
 			}
 			var record struct {
-				APIKey string `json:"api_key"`
+				APIKey  string `json:"api_key"`
+				BaseURL string `json:"base_url"`
 			}
 			if json.Unmarshal(raw, &record) != nil || record.APIKey == "" {
 				return fmt.Errorf("existing plugin auth record is invalid")
 			}
-			digest := sha256.Sum256([]byte(record.APIKey))
-			existing["opencode-go-key-"+hex.EncodeToString(digest[:])] = struct{}{}
+			if record.BaseURL == "" || strings.TrimRight(record.BaseURL, "/") == strings.TrimRight(cfg.BaseURL, "/") {
+				digest := sha256.Sum256([]byte(record.APIKey))
+				existing["opencode-go-key-"+hex.EncodeToString(digest[:])] = struct{}{}
+			}
 		}
 		if name := strings.TrimSpace(entry.Name); name != "" {
 			existing[name] = struct{}{}

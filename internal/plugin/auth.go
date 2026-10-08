@@ -24,6 +24,7 @@ func (p authProvider) ParseAuth(_ context.Context, req pluginapi.AuthParseReques
 		ID       string `json:"id"`
 		Label    string `json:"label"`
 		APIKey   string `json:"api_key"`
+		BaseURL  string `json:"base_url"`
 	}
 	if err := json.Unmarshal(req.RawJSON, &raw); err != nil {
 		if req.Provider == ProviderID {
@@ -40,10 +41,28 @@ func (p authProvider) ParseAuth(_ context.Context, req pluginapi.AuthParseReques
 	if raw.ID == "" {
 		raw.ID = req.FileName
 	}
+	attributes := map[string]string{"api_key": raw.APIKey}
+	label := accountLabel(p.cfg, raw.APIKey, raw.Label, 0)
+	if raw.BaseURL != "" {
+		base, err := credentialBaseURL(map[string]string{"base_url": raw.BaseURL, "api_key": raw.APIKey}, nil, p.cfg)
+		if err != nil {
+			return pluginapi.AuthParseResponse{}, err
+		}
+		attributes["base_url"] = base
+		label = strings.TrimSpace(raw.Label)
+		if label == "" {
+			label = "OpenCode Go"
+		}
+		// The save callback registers panel credentials by filename. Match it
+		// when the watcher reparses, while preserving legacy configured IDs.
+		if req.FileName != "" {
+			raw.ID = req.FileName
+		}
+	}
 	debugTrace("auth parse handled provider=%s file=%s id=%s api_key_present=%t api_key_length=%d", req.Provider, req.FileName, raw.ID, strings.TrimSpace(raw.APIKey) != "", len(raw.APIKey))
 	return pluginapi.AuthParseResponse{Handled: true, Auth: pluginapi.AuthData{
-		Provider: ProviderID, ID: raw.ID, FileName: req.FileName, Label: accountLabel(p.cfg, raw.APIKey, raw.Label, 0), StorageJSON: req.RawJSON,
-		Attributes: map[string]string{"api_key": raw.APIKey},
+		Provider: ProviderID, ID: raw.ID, FileName: req.FileName, Label: label, StorageJSON: req.RawJSON,
+		Attributes: attributes,
 	}}, nil
 }
 

@@ -28,8 +28,13 @@ func (m *Manager) FetchQuota(ctx context.Context, req pluginapi.QuotaFetchReques
 		return empty, fmt.Errorf("quota credential has no API key")
 	}
 	m.mu.RLock()
-	baseURL, timeout := m.cfg.BaseURL, m.cfg.RequestTimeout
+	cfg := m.cfg
 	m.mu.RUnlock()
+	baseURL, err := credentialBaseURL(req.Attributes, nil, cfg)
+	if err != nil {
+		return empty, err
+	}
+	timeout := cfg.RequestTimeout
 	if m.bridge == nil {
 		return empty, fmt.Errorf("quota bridge unavailable")
 	}

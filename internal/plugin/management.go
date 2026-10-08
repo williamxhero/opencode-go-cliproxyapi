@@ -13,8 +13,6 @@ import (
 	"net/http"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
-
-	"opencode-go-cliproxyapi/internal/config"
 	"opencode-go-cliproxyapi/resources"
 )
 
@@ -73,7 +71,10 @@ func (m *Manager) registerManagement(request []byte) ([]byte, error) {
 		Routes: []struct {
 			Method string `json:"method"`
 			Path   string `json:"path"`
-		}{{Method: http.MethodPost, Path: "/plugins/" + pluginName + "/quota-usage"}},
+		}{
+			{Method: http.MethodPost, Path: "/plugins/" + pluginName + "/quota-usage"},
+			{Method: http.MethodPost, Path: "/plugins/" + pluginName + "/credentials"},
+		},
 		Resources: []struct {
 			Path        string `json:"path"`
 			Menu        string `json:"menu"`
@@ -99,6 +100,9 @@ func (m *Manager) handleManagement(request []byte) ([]byte, error) {
 }
 
 func (m *Manager) HandleManagement(ctx context.Context, req pluginapi.ManagementRequest) (pluginapi.ManagementResponse, error) {
+	if req.Method == http.MethodPost && req.Path == "/v0/management/plugins/"+pluginName+"/credentials" {
+		return m.createCredential(ctx, req.Body)
+	}
 	if req.Method == http.MethodGet && req.Path == "/v0/resource/plugins/"+pluginName+"/quota" {
 		return pluginapi.ManagementResponse{
 			Headers: http.Header{"Content-Type": []string{"text/html; charset=utf-8"}},
@@ -115,24 +119,27 @@ func (m *Manager) HandleManagement(ctx context.Context, req pluginapi.Management
 		}
 	}
 	m.mu.RLock()
-	keys := append([]config.APIKey(nil), m.cfg.APIKeys...)
+	cfg := m.cfg
 	m.mu.RUnlock()
+	credentials, err := m.quotaCredentials(ctx, cfg, false)
+	if err != nil {
+		return credentialFailure(http.StatusBadGateway, "cannot inspect credentials")
+	}
 	if body.KeyID == "" {
-		cards := make([]legacyQuotaCard, 0, len(keys))
-		for _, key := range keys {
-			id, label := quotaIdentity(key.Value)
-			cards = append(cards, legacyQuotaCard{KeyID: id, Label: label})
+		cards := make([]legacyQuotaCard, 0, len(credentials))
+		for _, credential := range credentials {
+			cards = append(cards, legacyQuotaCard{KeyID: credential.ID, Label: credential.Label})
 		}
 		return quotaJSON(legacyQuotaList{Cards: cards})
 	}
-	for _, key := range keys {
-		id, label := quotaIdentity(key.Value)
+	for _, credential := range credentials {
+		id, label := credential.ID, credential.Label
 		if id != body.KeyID {
 			continue
 		}
 		fresh, err := m.FetchQuota(ctx, pluginapi.QuotaFetchRequest{
 			Provider:   ProviderID,
-			Attributes: map[string]string{"api_key": key.Value},
+			Attributes: map[string]string{"api_key": credential.APIKey, "base_url": credential.BaseURL},
 		})
 		if err != nil || len(fresh.Groups) == 0 {
 			return pluginapi.ManagementResponse{StatusCode: http.StatusBadGateway, Body: []byte(`{"error":"quota refresh failed"}`)}, nil
