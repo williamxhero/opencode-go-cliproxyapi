@@ -123,13 +123,16 @@ func (m *Manager) quotaCredentials(ctx context.Context, cfg config.Config, stric
 		if entry.Provider != ProviderID && entry.Type != ProviderID {
 			continue
 		}
-		if !filepath.IsAbs(entry.Path) {
-			if !strict {
-				continue
+		// The host reports plugin-managed records with a path relative to its own working
+		// directory; resolve it so the duplicate check stays reliable. A record that still
+		// cannot be read keeps failing closed (never create a duplicate blindly).
+		path := strings.TrimSpace(entry.Path)
+		if path != "" && !filepath.IsAbs(path) {
+			if abs, err := filepath.Abs(path); err == nil {
+				path = abs
 			}
-			return nil, fmt.Errorf("credential path unavailable")
 		}
-		raw, err := os.ReadFile(entry.Path)
+		raw, err := os.ReadFile(path)
 		if err != nil {
 			if !strict {
 				continue
