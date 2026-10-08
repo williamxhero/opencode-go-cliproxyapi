@@ -390,7 +390,7 @@ func (m *Manager) materializeAuthRecords(ctx context.Context, cfg config.Config)
 		if _, ok := existing[name]; ok {
 			continue
 		}
-		name = availableAuthName(accountLabel(cfg, key.Value, "", i), existing)
+		name = availableAuthName(fileNameAlias(accountLabel(cfg, key.Value, "", i), key.Value), existing)
 		record, err := json.Marshal(struct {
 			Type   string `json:"type"`
 			ID     string `json:"id"`
@@ -571,6 +571,16 @@ func okEnvelope(result any) []byte {
 func ErrEnvelope(code, message string) []byte {
 	out, _ := json.Marshal(pluginabi.Envelope{OK: false, Error: &pluginabi.Error{Code: code, Message: message}})
 	return out
+}
+
+// The panel renders Label, so the file name is only a convenience. When the label is
+// just the masked key, name the file after the plugin instead of embedding key
+// fragments in it.
+func fileNameAlias(label, key string) string {
+	if strings.TrimSpace(label) == maskAPIKey(key) {
+		return "OpenCode Go"
+	}
+	return label
 }
 
 // Use a readable filename because management clients may show it instead of Label.

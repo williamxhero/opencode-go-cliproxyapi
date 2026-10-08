@@ -62,7 +62,8 @@ func (m *Manager) createCredential(ctx context.Context, body []byte) (pluginapi.
 	}
 	label := strings.TrimSpace(input.Name)
 	if label == "" {
-		label = "OpenCode Go"
+		// No alias: show the key masked (first4...last4) instead of a generic name.
+		label = maskAPIKey(input.APIKey)
 	}
 	label = strings.ReplaceAll(label, input.APIKey, "[redacted]")
 	if m.bridge == nil {

@@ -45,7 +45,7 @@ type legacyQuotaRequest struct {
 func quotaIdentity(key string) (id, label string) {
 	digest := sha256.Sum256([]byte(key))
 	hash := hex.EncodeToString(digest[:])
-	return "opencode-go-key-" + hash, "OpenCode Go credential " + hash[:12]
+	return "opencode-go-key-" + hash, maskAPIKey(key)
 }
 
 func (m *Manager) registerManagement(request []byte) ([]byte, error) {

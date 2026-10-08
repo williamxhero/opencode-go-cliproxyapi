@@ -87,7 +87,7 @@ func TestAccountLabels(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, tt := range []struct{ key, old, want string }{{"one", "OpenCode Go credential hash", "Personal"}, {"two", "opencode-go-key-hash", "OpenCode Go 2"}, {"two", "Work", "Work"}} {
+	for _, tt := range []struct{ key, old, want string }{{"one", "OpenCode Go credential hash", "Personal"}, {"two", "opencode-go-key-hash", maskAPIKey("two")}, {"two", "Work", "Work"}} {
 		if got := accountLabel(cfg, tt.key, tt.old, 0); got != tt.want {
 			t.Fatalf("got %q want %q", got, tt.want)
 		}
@@ -97,8 +97,16 @@ func TestAccountLabels(t *testing.T) {
 	if err != nil || result.Auth.Label != "Personal" || result.Auth.ID != "stable-id" || string(result.Auth.StorageJSON) != string(raw) {
 		t.Fatal("name migration changed credential storage")
 	}
-	if accountLabel(config.Config{}, "key", "", 0) != "OpenCode Go" {
+	if accountLabel(config.Config{}, "key", "", 0) != maskAPIKey("key") {
 		t.Fatal("bad default name")
+	}
+	// A generated label from an older build is not an alias and must be replaced.
+	if accountLabel(config.Config{}, "key", "OpenCode Go 4", 3) != maskAPIKey("key") {
+		t.Fatal("stale default label kept")
+	}
+	// A user-chosen alias always wins.
+	if accountLabel(config.Config{}, "key", "我的订阅", 0) != "我的订阅" {
+		t.Fatal("user alias lost")
 	}
 }
 

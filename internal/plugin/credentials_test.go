@@ -165,7 +165,7 @@ func TestCredentialValidation(t *testing.T) {
 			if tt.status != 200 && len(f.callsOf(pluginabi.MethodHostAuthSave)) != 0 {
 				t.Fatal("invalid request persisted")
 			}
-			if tt.name == "default name" && !strings.Contains(string(resp.Body), `"label":"OpenCode Go"`) {
+			if tt.name == "default name" && !strings.Contains(string(resp.Body), `"label":"`+maskAPIKey("dummy")+`"`) {
 				t.Fatal("missing default label")
 			}
 		})

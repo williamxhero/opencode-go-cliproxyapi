@@ -554,7 +554,7 @@ func TestLifecycleMaterializesDeterministicAuthRecords(t *testing.T) {
 		}
 		hash := sha256.Sum256([]byte(record.APIKey))
 		wantHash := hex.EncodeToString(hash[:])
-		if record.Type != ProviderID || record.ID != "opencode-go-key-"+wantHash || !strings.HasPrefix(record.Label, "OpenCode Go ") || !strings.HasPrefix(wire.Name, "OpenCode-Go-") {
+		if record.Type != ProviderID || record.ID != "opencode-go-key-"+wantHash || record.Label != maskAPIKey(record.APIKey) || !strings.HasPrefix(wire.Name, "OpenCode-Go") || strings.Contains(wire.Name, "-sk-") {
 			t.Fatalf("record identity = %+v name=%q", record, wire.Name)
 		}
 		if record.APIKey == "" || strings.Contains(wire.Name, record.APIKey) || strings.Contains(record.ID, record.APIKey) {

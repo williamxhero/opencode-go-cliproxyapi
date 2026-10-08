@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"opencode-go-cliproxyapi/internal/config"
+	"regexp"
 	"strings"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
@@ -100,11 +101,44 @@ func accountLabel(cfg config.Config, key, existing string, fallbackIndex int) st
 		}
 	}
 	label := strings.TrimSpace(existing)
-	if label != "" && !strings.HasPrefix(label, "OpenCode Go credential ") && !strings.HasPrefix(label, "opencode-go-key-") {
+	if label != "" && !strings.HasPrefix(label, "OpenCode Go credential ") && !strings.HasPrefix(label, "opencode-go-key-") && !generatedOpenCodeLabel(label) {
 		return label
+	}
+	if masked := maskAPIKey(key); masked != "" {
+		return masked
 	}
 	if len(cfg.APIKeys) > 1 {
 		return fmt.Sprintf("OpenCode Go %d", index+1)
 	}
 	return "OpenCode Go"
 }
+
+// Label presentation rule (matches the Qwen plugin): an alias wins, otherwise the
+// key is shown masked as first4...last4 so two credentials stay distinguishable in
+// the panel without the secret being readable.
+func maskAPIKey(key string) string {
+	runes := []rune(strings.TrimSpace(key))
+	switch {
+	case len(runes) >= 12:
+		return string(runes[:4]) + "..." + string(runes[len(runes)-4:])
+	case len(runes) >= 8:
+		return string(runes[:2]) + "..." + string(runes[len(runes)-2:])
+	case len(runes) >= 2:
+		return string(runes[:1]) + "..." + string(runes[len(runes)-1:])
+	case len(runes) == 1:
+		return "..."
+	default:
+		return ""
+	}
+}
+
+// generatedOpenCodeLabel reports labels this plugin produced by itself (never a
+// user alias), so they are replaced by the mask on the next materialisation.
+func generatedOpenCodeLabel(label string) bool {
+	if label == "OpenCode Go" {
+		return true
+	}
+	return generatedOpenCodeLabelRe.MatchString(label)
+}
+
+var generatedOpenCodeLabelRe = regexp.MustCompile(`^OpenCode Go \d+$`)

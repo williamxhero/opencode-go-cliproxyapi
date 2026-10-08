@@ -4,6 +4,10 @@ A native dynamic Go plugin for [CLIProxyAPI](https://help.router-for.me/plugin/d
 
 The plugin unifies model discovery, protocol translation, and execution across OpenCode Go's upstream endpoints while leveraging CLIProxyAPI's built-in authentication, scheduling, keys rotation, and cooldown management.
 
+## Credential naming
+
+The panel shows a credential's **label**: an **alias** wins (the optional `别名 (Alias)` field, or a config `api-keys` entry's `name`); with no alias the label is the **API key masked as `first4...last4`** (e.g. `sk-o...9abc`; short keys are masked harder). Labels this plugin generated itself (`OpenCode Go`, `OpenCode Go 2`, `OpenCode Go credential ab12…`) are replaced by the mask on the next materialisation, while a label you chose by hand is preserved. Auth **file names** never carry key fragments — a credential without an alias is filed as `OpenCode-Go.json`.
+
 ## The Problem
 
 OpenCode Go exposes models across multiple API protocols (OpenAI Chat Completions `/v1/chat/completions`, Anthropic Messages `/v1/messages`, and OpenAI Responses `/v1/responses`).
